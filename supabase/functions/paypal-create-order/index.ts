@@ -1,59 +1,33 @@
+// supabase/functions/paypal-create-order/index.ts
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
-// Función para obtener el token de acceso de PayPal
+// Headers de CORS para permitir las solicitudes desde tu web
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // O puedes poner 'https://clasesjuridicas.com' para más seguridad
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 async function getPayPalAccessToken() {
-  const clientId = Deno.env.get('PAYPAL_CLIENT_ID')
-  const clientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET')
-  const auth = btoa(`${clientId}:${clientSecret}`)
-  
-  const response = await fetch(`${Deno.env.get('PAYPAL_API_URL')}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  })
-  
-  const data = await response.json()
-  return data.access_token
+  // ... (código existente sin cambios) ...
 }
 
 serve(async (req) => {
+  // Manejo de la solicitud "pre-flight" de CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     const { coursePrice } = await req.json()
-    const accessToken = await getPayPalAccessToken()
-    
-    const orderResponse = await fetch(`${Deno.env.get('PAYPAL_API_URL')}/v2/checkout/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        intent: 'CAPTURE',
-        purchase_units: [{
-          amount: {
-            currency_code: 'USD', // Cambia a tu moneda
-            value: coursePrice.toString(),
-          },
-        }],
-      }),
-    })
-    
-    const orderData = await orderResponse.json()
-    
+    // ... (resto del código para crear la orden) ...
+
     return new Response(JSON.stringify({ id: orderData.id }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })
   }
